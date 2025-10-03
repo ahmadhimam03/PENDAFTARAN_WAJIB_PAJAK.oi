@@ -1,0 +1,2468 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pendaftaran Wajib Pajak</title>
+    <!-- SheetJS Library untuk export XLSX yang proper -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #8B4513 0%, #D2B48C  100%);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="%23000" opacity="0.1"/><circle cx="80" cy="40" r="1" fill="%23000" opacity="0.1"/><circle cx="40" cy="60" r="1" fill="%23000" opacity="0.1"/><circle cx="90" cy="90" r="1" fill="%23000" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .vintage-card {
+            background: rgba(245, 245, 220, 0.95);
+            border: 3px solid #8B4513;
+            border-radius: 15px;
+            box-shadow: 
+                0 0 20px rgba(139, 69, 19, 0.3),
+                inset 0 0 10px rgba(139, 69, 19, 0.1);
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .vintage-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #8B4513, #D2B48C, #8B4513);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #F5F5DC;
+            padding: 20px 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .card-header::after {
+            content: '⋄';
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            opacity: 0.7;
+        }
+
+        .card-header::before {
+            content: '⋄';
+            position: absolute;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            opacity: 0.7;
+        }
+
+        .card-header h1 {
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin: 0;
+            font-family: 'Times New Roman', serif;
+        }
+
+        .card-header .subtitle {
+            font-size: 1.2em;
+            margin-top: 10px;
+            opacity: 0.9;
+            font-style: italic;
+        }
+
+        .card-body {
+            padding: 40px;
+        }
+
+        .auth-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .portal-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .portal-btn {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #F5F5DC;
+            border: none;
+            padding: 25px 35px;
+            border-radius: 12px;
+            font-size: 1.4em;
+            font-family: 'Georgia', serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(139, 69, 19, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .portal-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .portal-btn:hover::before {
+            left: 100%;
+        }
+
+        .portal-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(139, 69, 19, 0.4);
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #8B4513;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .required::after {
+            content: ' *';
+            color: #DC143C;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #D2B48C;
+            border-radius: 8px;
+            font-size: 1.1em;
+            background: rgba(255, 255, 255, 0.9);
+            transition: border-color 0.3s ease;
+            font-family: 'Georgia', serif;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #8B4513;
+            box-shadow: 0 0 10px rgba(139, 69, 19, 0.2);
+        }
+
+        .form-control.uppercase {
+            text-transform: uppercase;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-help {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #F5F5DC;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(139, 69, 19, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #696969, #808080);
+        }
+
+        .progress-bar {
+            background: #D2B48C;
+            height: 8px;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #8B4513, #A0522D);
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 2px solid #D2B48C;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 0.9em;
+        }
+
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #D2B48C;
+        }
+
+        .table th {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #F5F5DC;
+            font-weight: bold;
+        }
+
+        .table tr:hover {
+            background: rgba(139, 69, 19, 0.1);
+        }
+
+        .admin-login {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .admin-login.active {
+            display: flex;
+        }
+
+        .login-modal {
+            background: #F5F5DC;
+            padding: 40px;
+            border-radius: 15px;
+            border: 3px solid #8B4513;
+            box-shadow: 0 0 30px rgba(139, 69, 19, 0.5);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .captcha-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(139, 69, 19, 0.1);
+            border-radius: 8px;
+            border: 2px solid #D2B48C;
+        }
+
+        .captcha-code {
+            background: linear-gradient(45deg, #8B4513, #A0522D);
+            color: #F5F5DC;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 1.2em;
+            letter-spacing: 3px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            user-select: none;
+        }
+
+        .btn-refresh-captcha {
+            background: #696969;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 5px solid;
+        }
+
+        .alert-success {
+            background: rgba(34, 139, 34, 0.1);
+            border-color: #228B22;
+            color: #006400;
+        }
+
+        .alert-error {
+            background: rgba(220, 20, 60, 0.1);
+            border-color: #DC143C;
+            color: #8B0000;
+        }
+
+        .alert-info {
+            background: rgba(70, 130, 180, 0.1);
+            border-color: #4682B4;
+            color: #191970;
+        }
+
+        .sales-table-container {
+            overflow-x: auto;
+            max-height: 600px;
+            border: 2px solid #D2B48C;
+            border-radius: 8px;
+        }
+
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            position: relative;
+        }
+
+        .sales-table th {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            color: #F5F5DC;
+            padding: 10px 5px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 0.85em;
+        }
+
+        .sales-table td {
+            border: 1px solid #D2B48C;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .sales-table input {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            text-align: right;
+            font-size: 0.9em;
+        }
+
+        .total-cell {
+            background: rgba(139, 69, 19, 0.1);
+            font-weight: bold;
+        }
+
+        .date-header {
+            writing-mode: vertical-lr;
+            text-orientation: mixed;
+            min-width: 30px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .admin-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            background: #696969;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .portal-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .card-body {
+                padding: 20px;
+            }
+
+            .admin-tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="vintage-card">
+            <div class="card-header">
+                <h1>SISTEM PAJAK MODERN</h1>
+                <div class="subtitle">Portal Pendaftaran & Pelaporan Wajib Pajak</div>
+            </div>
+            <div class="card-body">
+                <!-- Main Menu -->
+                <div id="mainMenu" class="auth-section">
+                    <div class="portal-buttons">
+                        <button class="portal-btn" onclick="showUserPortal()">
+                            👤 PORTAL PENGGUNA
+                        </button>
+                        <button class="portal-btn" onclick="showAdminLogin()">
+                            🔐 PORTAL ADMIN
+                        </button>
+                    </div>
+                </div>
+
+                <!-- User Portal -->
+                <div id="userPortal" class="form-section">
+                    <h2 style="text-align: center; color: #8B4513; margin-bottom: 30px;">PORTAL PENGGUNA</h2>
+                    
+                    <div class="portal-buttons">
+                        <button class="portal-btn" onclick="showTaxRegistration()">
+                            📋 PENDAFTARAN WAJIB PAJAK
+                        </button>
+                        <button class="portal-btn" onclick="showSalesReport()">
+                            📊 PENCATATAN & PELAPORAN
+                        </button>
+                    </div>
+                    
+                    <button class="btn btn-secondary" onclick="backToMain()">← Kembali ke Menu Utama</button>
+                </div>
+
+                <!-- Tax Registration Form -->
+                <div id="taxRegistration" class="form-section">
+                    <h2 style="text-align: center; color: #8B4513; margin-bottom: 30px;">FORM PENDAFTARAN WAJIB PAJAK</h2>
+                    
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar" style="width: 33.33%;"></div>
+                    </div>
+                    
+                    <!-- Page 1 -->
+                    <div id="taxPage1" class="form-section active">
+                        <h3 style="color: #8B4513; margin-bottom: 20px;">Halaman 1 - Data Pendaftaran</h3>
+                        
+                        <div class="alert alert-info">
+                            <strong>Keterangan:</strong> Semua field wajib diisi untuk melanjutkan ke halaman berikutnya.
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="required">Tanggal Pendataan</label>
+                            <input type="date" class="form-control" id="tanggalPendataan" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Jenis Pendataan</label>
+                            <input type="text" class="form-control" value="WAJIB PAJAK" readonly>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="required">Bidang Usaha</label>
+                            <select class="form-control" id="bidangUsaha" required>
+                                <option value="">Pilih Bidang Usaha</option>
+                                <option value="PRIBADI">PRIBADI</option>
+                                <option value="BADAN USAHA">BADAN USAHA</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn" onclick="nextPage(2)">Lanjut ke Halaman 2 →</button>
+                        <button class="btn btn-secondary" onclick="backToUserPortal()">← Kembali</button>
+                    </div>
+
+                    <!-- Page 2 -->
+                    <div id="taxPage2" class="form-section">
+                        <h3 style="color: #8B4513; margin-bottom: 20px;">Halaman 2 - Data Pemilik & Penanggung Jawab</h3>
+                        
+                        <!-- Form Pemilik -->
+                        <div class="vintage-card" style="margin-bottom: 30px;">
+                            <div class="card-header">
+                                <h4>FORM PEMILIK</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label class="required">Nama Pemilik</label>
+                                    <input type="text" class="form-control uppercase" id="namaPemilik" required>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="required">NIK</label>
+                                        <input type="text" class="form-control" id="nikPemilik" maxlength="16" pattern="[0-9]{16}" required>
+                                        <div class="form-help">16 digit angka tanpa spasi dan karakter</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">NPWP</label>
+                                        <input type="text" class="form-control" id="npwpPemilik" maxlength="15" pattern="[0-9]{15}" required>
+                                        <div class="form-help">15 digit angka tanpa spasi dan karakter</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="required">Alamat</label>
+                                    <input type="text" class="form-control uppercase" id="alamatPemilik" required>
+                                    <div class="form-help">Diisi menggunakan HURUF KAPITAL semua</div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="required">RT/RW</label>
+                                        <input type="text" class="form-control" id="rtRwPemilik" pattern="[0-9]{3}/[0-9]{3}" placeholder="001/002" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">Kelurahan</label>
+                                        <input type="text" class="form-control uppercase" id="kelurahanPemilik" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="required">Kecamatan</label>
+                                        <input type="text" class="form-control uppercase" id="kecamatanPemilik" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">Kabupaten</label>
+                                        <input type="text" class="form-control uppercase" id="kabupatenPemilik" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="required">No. Telp</label>
+                                        <input type="text" class="form-control" id="telpPemilik" pattern="08[0-9]+" required>
+                                        <div class="form-help">Dimulai dengan 08</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">Email</label>
+                                        <input type="email" class="form-control" id="emailPemilik" pattern="[a-zA-Z0-9._%+-]+@gmail\.com" required>
+                                        <div class="form-help">Berakhiran @gmail.com</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="required">Kode Pos</label>
+                                    <input type="text" class="form-control" id="kodePosPemilik" maxlength="5" pattern="[0-9]{5}" required>
+                                    <div class="form-help">5 digit angka tanpa spasi dan karakter</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Penanggung Jawab -->
+                        <div class="vintage-card">
+                            <div class="card-header">
+                                <h4>FORM PENANGGUNG JAWAB (Opsional)</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>Nama Penanggung Jawab</label>
+                                    <input type="text" class="form-control uppercase" id="namaPenanggungJawab">
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>NIK</label>
+                                        <input type="text" class="form-control" id="nikPenanggungJawab" maxlength="16" pattern="[0-9]{16}">
+                                        <div class="form-help">16 digit angka tanpa spasi dan karakter</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>NPWP</label>
+                                        <input type="text" class="form-control" id="npwpPenanggungJawab" maxlength="15" pattern="[0-9]{15}">
+                                        <div class="form-help">15 digit angka tanpa spasi dan karakter</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Alamat (Jalan)</label>
+                                    <input type="text" class="form-control uppercase" id="alamatPenanggungJawab">
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>RT/RW</label>
+                                        <input type="text" class="form-control" id="rtRwPenanggungJawab" pattern="[0-9]{3}/[0-9]{3}" placeholder="001/002">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Kelurahan</label>
+                                        <input type="text" class="form-control uppercase" id="kelurahanPenanggungJawab">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Kecamatan</label>
+                                        <input type="text" class="form-control uppercase" id="kecamatanPenanggungJawab">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Kabupaten</label>
+                                        <input type="text" class="form-control uppercase" id="kabupatenPenanggungJawab">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>No. Telp</label>
+                                        <input type="text" class="form-control" id="telpPenanggungJawab" pattern="08[0-9]+">
+                                        <div class="form-help">Dimulai dengan 08</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Email</label>
+                                        <input type="email" class="form-control" id="emailPenanggungJawab" pattern="[a-zA-Z0-9._%+-]+@gmail\.com">
+                                        <div class="form-help">Berakhiran @gmail.com</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Kode Pos</label>
+                                    <input type="text" class="form-control" id="kodePosPenanggungJawab" maxlength="5" pattern="[0-9]{5}">
+                                    <div class="form-help">5 digit angka tanpa spasi dan karakter</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn" onclick="nextPage(3)">Lanjut ke Halaman 3 →</button>
+                        <button class="btn btn-secondary" onclick="nextPage(1)">← Kembali ke Halaman 1</button>
+                    </div>
+
+                    <!-- Page 3 -->
+                    <div id="taxPage3" class="form-section">
+                        <h3 style="color: #8B4513; margin-bottom: 20px;">Halaman 3 - Data Wajib Pajak & Objek Pajak</h3>
+                        
+                        <!-- Data Wajib Pajak -->
+                        <div class="vintage-card" style="margin-bottom: 30px;">
+                            <div class="card-header">
+                                <h4>DATA WAJIB PAJAK</h4>
+                            </div>
+                            <div class="card-body" id="dataWajibPajak">
+                                <!-- Data akan diisi otomatis dari form sebelumnya -->
+                            </div>
+                        </div>
+
+                        <!-- Data Objek Pajak -->
+                        <div class="vintage-card" style="margin-bottom: 30px;">
+                            <div class="card-header">
+                                <h4>DATA OBJEK PAJAK</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-container">
+                                    <table class="table" id="objekPajakTable">
+                                        <thead>
+                                            <tr>
+                                                <th>No</th>
+                                                <th>ID OP</th>
+                                                <th>Nama Objek</th>
+                                                <th>Jenis Pajak</th>
+                                                <th>Jalan</th>
+                                                <th>Kecamatan OP</th>
+                                                <th>Kelurahan OP</th>
+                                                <th>Tgl. Daftar OP</th>
+                                                <th>Transaksi</th>
+                                                <th>Perintah</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="objekPajakTableBody">
+                                            <!-- Data akan ditambahkan dinamis -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button class="btn" onclick="addObjekPajak()">+ Tambah Objek Pajak</button>
+                            </div>
+                        </div>
+
+                        <!-- Penginputan Data Objek Pajak -->
+                        <div class="vintage-card">
+                            <div class="card-header">
+                                <h4>PENGINPUTAN DATA OBJEK PAJAK</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label class="required">Jenis Objek</label>
+                                    <select class="form-control" id="jenisObjek" required>
+                                        <option value="">Pilih Jenis Objek</option>
+                                        <option value="PENDATAAN POTENSI PAJAK">PENDATAAN POTENSI PAJAK</option>
+                                        <option value="PBJT JASA PERHOTELAN">PBJT JASA PERHOTELAN</option>
+                                        <option value="PBJT MAKANAN DAN/ATAU MINUMAN">PBJT MAKANAN DAN/ATAU MINUMAN</option>
+                                        <option value="PBJT JASA KESENIAN DAN HIBURAN">PBJT JASA KESENIAN DAN HIBURAN</option>
+                                        <option value="PBJT TENAGA LISTRIK">PBJT TENAGA LISTRIK</option>
+                                        <option value="PBJT JASA PARKIR">PBJT JASA PARKIR</option>
+                                        <option value="PAJAK REKLAME">PAJAK REKLAME</option>
+                                        <option value="PAJAK MINERAL BUKAN LOGAM DAN BUATAN">PAJAK MINERAL BUKAN LOGAM DAN BUATAN</option>
+                                        <option value="PAJAK AIR BAWAH TANAH">PAJAK AIR BAWAH TANAH</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="required">Tgl. Daftar</label>
+                                    <input type="date" class="form-control" id="tglDaftarObjek" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="required">Nama</label>
+                                    <input type="text" class="form-control uppercase" id="namaObjek" required>
+                                    <div class="form-help">Diisi menggunakan HURUF KAPITAL semua</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="required">Jalan</label>
+                                    <input type="text" class="form-control uppercase" id="jalanObjek" required>
+                                    <div class="form-help">Diisi menggunakan HURUF KAPITAL semua</div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="required">RT/RW</label>
+                                        <input type="text" class="form-control" id="rtRwObjek" pattern="[0-9]{3}/[0-9]{3}" placeholder="001/002" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">Kecamatan</label>
+                                        <input type="text" class="form-control uppercase" id="kecamatanObjek" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="required">Kelurahan/Desa</label>
+                                        <input type="text" class="form-control uppercase" id="kelurahanObjek" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">Kabupaten</label>
+                                        <input type="text" class="form-control uppercase" id="kabupatenObjek" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="required">No. Telp</label>
+                                        <input type="text" class="form-control" id="telpObjek" pattern="08[0-9]+" required>
+                                        <div class="form-help">Dimulai dengan 08</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">Kode Pos</label>
+                                        <input type="text" class="form-control" id="kodePosObjek" maxlength="5" pattern="[0-9]{5}" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Media Sosial (Opsional)</label>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>Instagram</label>
+                                            <input type="text" class="form-control" id="instagram" placeholder="@username">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Facebook</label>
+                                            <input type="text" class="form-control" id="facebook" placeholder="Facebook Page">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>TikTok</label>
+                                        <input type="text" class="form-control" id="tiktok" placeholder="@username">
+                                    </div>
+                                </div>
+                                
+                                <div class="captcha-container">
+                                    <div class="captcha-code" id="captchaCode">ABCD5</div>
+                                    <button type="button" class="btn-refresh-captcha" onclick="generateCaptcha()">🔄</button>
+                                    <input type="text" class="form-control" id="captchaInput" placeholder="Masukkan kode captcha" style="width: 150px;" required>
+                                </div>
+                                
+                                <button class="btn" onclick="submitTaxRegistration()">✓ Simpan Data Pendaftaran</button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-secondary" onclick="nextPage(2)">← Kembali ke Halaman 2</button>
+                    </div>
+                </div>
+
+                <!-- Sales Report -->
+                <div id="salesReport" class="form-section">
+                    <h2 style="text-align: center; color: #8B4513; margin-bottom: 30px;">PENCATATAN & PELAPORAN</h2>
+                    
+                    <div class="vintage-card">
+                        <div class="card-header">
+                            <h4>LAPORAN PENJUALAN HARIAN & BULANAN</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="required">Bulan Pelaporan</label>
+                                    <select class="form-control" id="bulanPelaporan" required>
+                                        <option value="">Pilih Bulan</option>
+                                        <option value="01">Januari</option>
+                                        <option value="02">Februari</option>
+                                        <option value="03">Maret</option>
+                                        <option value="04">April</option>
+                                        <option value="05">Mei</option>
+                                        <option value="06">Juni</option>
+                                        <option value="07">Juli</option>
+                                        <option value="08">Agustus</option>
+                                        <option value="09">September</option>
+                                        <option value="10">Oktober</option>
+                                        <option value="11">November</option>
+                                        <option value="12">Desember</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tahun Pelaporan (Opsional)</label>
+                                    <input type="number" class="form-control" id="tahunPelaporan" min="2020" max="2030" placeholder="2024">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nama Restoran (Opsional)</label>
+                                    <input type="text" class="form-control" id="namaRestoran">
+                                </div>
+                                <div class="form-group">
+                                    <label>Nama Petugas (Opsional)</label>
+                                    <input type="text" class="form-control" id="namaPetugas">
+                                </div>
+                            </div>
+                            
+                            <button class="btn" onclick="generateSalesTable()">📊 Generate Tabel Laporan</button>
+                        </div>
+                    </div>
+
+                    <div id="salesTableContainer" class="vintage-card hidden" style="margin-top: 30px;">
+                        <div class="card-header">
+                            <h4>TABEL LAPORAN PENJUALAN</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="sales-table-container">
+                                <table class="sales-table" id="salesTable">
+                                    <thead id="salesTableHead">
+                                        <!-- Header akan digenerate dinamis -->
+                                    </thead>
+                                    <tbody id="salesTableBody">
+                                        <!-- Body akan digenerate dinamis -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style="margin-top: 20px;">
+                                <div class="captcha-container">
+                                    <div class="captcha-code" id="salesCaptchaCode">EFGH9</div>
+                                    <button type="button" class="btn-refresh-captcha" onclick="generateSalesCaptcha()">🔄</button>
+                                    <input type="text" class="form-control" id="salesCaptchaInput" placeholder="Masukkan kode captcha" style="width: 150px;" required>
+                                </div>
+                                
+                                <button class="btn" onclick="saveSalesReport()">💾 Simpan Laporan</button>
+                                <button class="btn" onclick="exportSalesReport()">📤 Export Excel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="backToUserPortal()">← Kembali</button>
+                </div>
+
+                <!-- Admin Portal -->
+                <div id="adminPortal" class="form-section">
+                    <h2 style="text-align: center; color: #8B4513; margin-bottom: 30px;">PORTAL ADMIN</h2>
+                    
+                    <!-- Admin Tabs -->
+                    <div class="admin-tabs">
+                        <button class="tab-btn active" onclick="showAdminTab('taxData')">📋 Data Wajib Pajak</button>
+                        <button class="tab-btn" onclick="showAdminTab('salesData')">📊 Laporan Penjualan</button>
+                        <button class="tab-btn" onclick="showAdminTab('settings')">⚙️ Pengaturan</button>
+                    </div>
+
+                    <!-- Tax Data Tab -->
+                    <div id="taxDataTab" class="tab-content active">
+                        <div class="vintage-card">
+                            <div class="card-header">
+                                <h4>REKAP DATA PENDAFTARAN WAJIB PAJAK</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-container">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>No</th>
+                                                <th>Tanggal</th>
+                                                <th>NIK</th>
+                                                <th>Nama</th>
+                                                <th>Bidang Usaha</th>
+                                                <th>Alamat</th>
+                                                <th>No. Telp</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminTaxData">
+                                            <!-- Data akan ditampilkan dari localStorage -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button class="btn" onclick="exportTaxData('word')">📄 Export Word</button>
+                                <button class="btn" onclick="exportTaxData('excel')">📊 Export Excel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sales Data Tab -->
+                    <div id="salesDataTab" class="tab-content">
+                        <div class="vintage-card">
+                            <div class="card-header">
+                                <h4>REKAP LAPORAN PENJUALAN</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-container">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>No</th>
+                                                <th>Bulan</th>
+                                                <th>Tahun</th>
+                                                <th>Restoran</th>
+                                                <th>Petugas</th>
+                                                <th>Total Bulanan</th>
+                                                <th>Rata-rata Harian</th>
+                                                <th>Tanggal Simpan</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adminSalesData">
+                                            <!-- Data akan ditampilkan dari localStorage -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button class="btn" onclick="exportSalesData('excel')">📊 Export Excel</button>
+                                <button class="btn" onclick="clearAllSalesData()" style="background: #DC143C; margin-left: 10px;">🗑️ Hapus Semua Data</button>
+                            </div>
+                        </div>
+
+                        <!-- Detail Sales Report Section -->
+                        <div id="salesDetailSection" class="vintage-card hidden" style="margin-top: 30px;">
+                            <div class="card-header">
+                                <h4>DETAIL LAPORAN HARIAN</h4>
+                            </div>
+                            <div class="card-body">
+                                <div id="salesDetailContent">
+                                    <!-- Detail content will be loaded here -->
+                                </div>
+                                <button class="btn btn-secondary" onclick="hideSalesDetail()">← Tutup Detail</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div id="settingsTab" class="tab-content">
+                        <div class="vintage-card">
+                            <div class="card-header">
+                                <h4>PENGATURAN ADMIN</h4>
+                            </div>
+                            <div class="card-body">
+                                <h4 style="color: #8B4513; margin-bottom: 20px;">Ubah Password Admin</h4>
+                                
+                                <div class="form-group">
+                                    <label class="required">Password Lama</label>
+                                    <input type="password" class="form-control" id="oldPassword" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="required">Password Baru</label>
+                                    <input type="password" class="form-control" id="newPassword" required>
+                                    <div class="form-help">Minimal 8 karakter, kombinasi huruf dan angka</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="required">Konfirmasi Password Baru</label>
+                                    <input type="password" class="form-control" id="confirmPassword" required>
+                                </div>
+                                
+                                <div class="captcha-container">
+                                    <div class="captcha-code" id="settingsCaptchaCode">QWERT</div>
+                                    <button type="button" class="btn-refresh-captcha" onclick="generateSettingsCaptcha()">🔄</button>
+                                    <input type="text" class="form-control" id="settingsCaptchaInput" placeholder="Masukkan kode captcha" style="width: 150px;" required>
+                                </div>
+                                
+                                <button class="btn" onclick="changeAdminPassword()">🔐 Ubah Password</button>
+                                
+                                <div style="margin-top: 40px; border-top: 2px solid #D2B48C; padding-top: 30px;">
+                                    <h4 style="color: #8B4513; margin-bottom: 20px;">Informasi Sistem</h4>
+                                    <div class="form-row">
+                                        <div><strong>Versi Sistem:</strong> v2.2.0</div>
+                                        <div><strong>Username Admin:</strong> admin_pajak</div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div><strong>Total Data Wajib Pajak:</strong> <span id="totalTaxData">0</span></div>
+                                        <div><strong>Total Laporan Penjualan:</strong> <span id="totalSalesData">0</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="logoutAdmin()">🚪 Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="adminLogin" class="admin-login">
+        <div class="login-modal">
+            <h3 style="text-align: center; color: #8B4513; margin-bottom: 30px;">LOGIN ADMIN</h3>
+            
+            <div class="form-group">
+                <label class="required">Username</label>
+                <input type="text" class="form-control" id="adminUsername" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="required">Password</label>
+                <input type="password" class="form-control" id="adminPassword" required>
+            </div>
+            
+            <div class="captcha-container">
+                <div class="captcha-code" id="adminCaptchaCode">XYZ12</div>
+                <button type="button" class="btn-refresh-captcha" onclick="generateAdminCaptcha()">🔄</button>
+                <input type="text" class="form-control" id="adminCaptchaInput" placeholder="Masukkan kode captcha" style="width: 150px;" required>
+            </div>
+            
+            <button class="btn" onclick="loginAdmin()">🔑 Login</button>
+            <button class="btn btn-secondary" onclick="closeAdminLogin()">✖ Batal</button>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let currentPage = 1;
+        let objekPajakCounter = 0;
+        let currentCaptcha = '';
+        let salesCaptcha = '';
+        let adminCaptcha = '';
+        let settingsCaptcha = '';
+        let currentAdminTab = 'taxData';
+        
+        // Data Storage - Initialize admin credentials in localStorage if not exists
+        function initializeAdminCredentials() {
+            const storedCredentials = localStorage.getItem('adminCredentials');
+            if (!storedCredentials) {
+                const defaultCredentials = {
+                    username: 'admin_pajak',
+                    password: 'TaxAdmin2024!'
+                };
+                localStorage.setItem('adminCredentials', JSON.stringify(defaultCredentials));
+            }
+        }
+
+        function getAdminCredentials() {
+            const credentials = localStorage.getItem('adminCredentials');
+            return credentials ? JSON.parse(credentials) : {
+                username: 'admin_pajak',
+                password: 'TaxAdmin2024!'
+            };
+        }
+
+        function saveAdminCredentials(credentials) {
+            localStorage.setItem('adminCredentials', JSON.stringify(credentials));
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            initializeAdminCredentials();
+            generateCaptcha();
+            generateSalesCaptcha();
+            generateAdminCaptcha();
+            generateSettingsCaptcha();
+            loadStoredData();
+            
+            // Auto-uppercase untuk field yang memerlukan
+            document.querySelectorAll('.uppercase').forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase();
+                });
+            });
+            
+            // Format NIK dan NPWP
+            document.querySelectorAll('input[pattern*="[0-9]"]').forEach(input => {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/\D/g, '');
+                });
+            });
+            
+            // Format RT/RW
+            document.querySelectorAll('input[pattern*="[0-9]{3}/[0-9]{3}"]').forEach(input => {
+                input.addEventListener('input', function() {
+                    let value = this.value.replace(/\D/g, '');
+                    if (value.length >= 3) {
+                        value = value.substring(0, 3) + '/' + value.substring(3, 6);
+                    }
+                    this.value = value;
+                });
+            });
+            
+            // Format Phone Number
+            document.querySelectorAll('input[pattern*="08[0-9]+"]').forEach(input => {
+                input.addEventListener('input', function() {
+                    let value = this.value.replace(/\D/g, '');
+                    if (value.length > 0 && !value.startsWith('08')) {
+                        if (value.startsWith('8')) {
+                            value = '0' + value;
+                        } else {
+                            value = '08' + value.replace(/^0+/, '');
+                        }
+                    }
+                    this.value = value;
+                });
+            });
+            
+            // Format Email Gmail
+            document.querySelectorAll('input[pattern*="@gmail"]').forEach(input => {
+                input.addEventListener('blur', function() {
+                    if (this.value && !this.value.includes('@')) {
+                        this.value += '@gmail.com';
+                    }
+                });
+            });
+        }
+
+        // Navigation Functions
+        function showUserPortal() {
+            hideAllSections();
+            document.getElementById('userPortal').classList.add('active');
+        }
+
+        function showAdminLogin() {
+            document.getElementById('adminLogin').classList.add('active');
+        }
+
+        function closeAdminLogin() {
+            document.getElementById('adminLogin').classList.remove('active');
+        }
+
+        function backToMain() {
+            hideAllSections();
+            document.getElementById('mainMenu').style.display = 'block';
+        }
+
+        function backToUserPortal() {
+            hideAllSections();
+            document.getElementById('userPortal').classList.add('active');
+        }
+
+        function showTaxRegistration() {
+            hideAllSections();
+            document.getElementById('taxRegistration').classList.add('active');
+            nextPage(1);
+        }
+
+        function showSalesReport() {
+            hideAllSections();
+            document.getElementById('salesReport').classList.add('active');
+        }
+
+        function hideAllSections() {
+            document.querySelectorAll('.form-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById('mainMenu').style.display = 'none';
+        }
+
+        function nextPage(page) {
+            if (page > currentPage && !validateCurrentPage()) {
+                return;
+            }
+            
+            currentPage = page;
+            
+            // Hide all pages
+            document.querySelectorAll('[id^="taxPage"]').forEach(p => p.classList.remove('active'));
+            
+            // Show current page
+            document.getElementById('taxPage' + page).classList.add('active');
+            
+            // Update progress bar
+            const progress = (page / 3) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+            
+            if (page === 3) {
+                populateDataWajibPajak();
+            }
+        }
+
+        function validateCurrentPage() {
+            const currentPageEl = document.getElementById('taxPage' + currentPage);
+            const requiredFields = currentPageEl.querySelectorAll('[required]');
+            
+            for (let field of requiredFields) {
+                if (!field.value.trim()) {
+                    showAlert('Harap lengkapi semua field yang wajib diisi!', 'error');
+                    field.focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function populateDataWajibPajak() {
+            const container = document.getElementById('dataWajibPajak');
+            const tanggal = document.getElementById('tanggalPendataan').value;
+            const nik = document.getElementById('nikPemilik').value;
+            const nama = document.getElementById('namaPemilik').value;
+            const alamat = document.getElementById('alamatPemilik').value;
+            const rtRw = document.getElementById('rtRwPemilik').value;
+            const kelurahan = document.getElementById('kelurahanPemilik').value;
+            const kecamatan = document.getElementById('kecamatanPemilik').value;
+            const kabupaten = document.getElementById('kabupatenPemilik').value;
+            const telp = document.getElementById('telpPemilik').value;
+            const kodePos = document.getElementById('kodePosPemilik').value;
+            
+            container.innerHTML = `
+                <div class="form-row">
+                    <div><strong>Tanggal Pendaftaran:</strong> ${formatDate(tanggal)}</div>
+                    <div><strong>NIK:</strong> ${nik}</div>
+                </div>
+                <div class="form-row">
+                    <div><strong>Nama Pemilik:</strong> ${nama}</div>
+                    <div><strong>No. Telp:</strong> ${telp}</div>
+                </div>
+                <div><strong>Alamat Pemilik:</strong> ${alamat}, RT/RW ${rtRw}, ${kelurahan}, ${kecamatan}, ${kabupaten}, ${kodePos}</div>
+            `;
+        }
+
+        // Admin Tab Management
+        function showAdminTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            currentAdminTab = tabName;
+            
+            if (tabName === 'settings') {
+                updateSystemInfo();
+            }
+        }
+
+        function updateSystemInfo() {
+            const taxData = getTaxData();
+            const salesData = getSalesData();
+            
+            document.getElementById('totalTaxData').textContent = taxData.length;
+            document.getElementById('totalSalesData').textContent = salesData.length;
+        }
+
+        // Admin Settings Functions
+        function changeAdminPassword() {
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (!validateSettingsCaptcha()) return;
+            
+            // Validate old password
+            const currentCredentials = getAdminCredentials();
+            if (oldPassword !== currentCredentials.password) {
+                showAlert('Password lama tidak sesuai!', 'error');
+                generateSettingsCaptcha();
+                return;
+            }
+            
+            // Validate new password
+            if (newPassword.length < 8) {
+                showAlert('Password baru minimal 8 karakter!', 'error');
+                return;
+            }
+            
+            if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(newPassword)) {
+                showAlert('Password baru harus mengandung huruf dan angka!', 'error');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                showAlert('Konfirmasi password tidak sesuai!', 'error');
+                return;
+            }
+            
+            // Save new password
+            const newCredentials = {
+                username: currentCredentials.username,
+                password: newPassword
+            };
+            saveAdminCredentials(newCredentials);
+            
+            // Clear form
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('settingsCaptchaInput').value = '';
+            generateSettingsCaptcha();
+            
+            showAlert('Password admin berhasil diubah!', 'success');
+        }
+
+        // Objek Pajak Management
+        function addObjekPajak() {
+            if (!validateObjekPajakForm()) return;
+            
+            objekPajakCounter++;
+            const jenisObjek = document.getElementById('jenisObjek').value;
+            const tglDaftar = document.getElementById('tglDaftarObjek').value;
+            const namaObjek = document.getElementById('namaObjek').value;
+            const jalanObjek = document.getElementById('jalanObjek').value;
+            const kecamatanObjek = document.getElementById('kecamatanObjek').value;
+            const kelurahanObjek = document.getElementById('kelurahanObjek').value;
+            
+            const tbody = document.getElementById('objekPajakTableBody');
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${objekPajakCounter}</td>
+                <td>OP${objekPajakCounter.toString().padStart(3, '0')}</td>
+                <td>${namaObjek}</td>
+                <td>${jenisObjek}</td>
+                <td>${jalanObjek}</td>
+                <td>${kecamatanObjek}</td>
+                <td>${kelurahanObjek}</td>
+                <td>${formatDate(tglDaftar)}</td>
+                <td>Aktif</td>
+                <td><button class="btn" onclick="removeObjekPajak(this)" style="padding: 5px 10px; font-size: 0.9em;">Hapus</button></td>
+            `;
+            
+            clearObjekPajakForm();
+            showAlert('Objek pajak berhasil ditambahkan!', 'success');
+        }
+
+        function removeObjekPajak(btn) {
+            if (confirm('Yakin ingin menghapus objek pajak ini?')) {
+                btn.closest('tr').remove();
+                updateObjekPajakNumbers();
+            }
+        }
+
+        function updateObjekPajakNumbers() {
+            const rows = document.querySelectorAll('#objekPajakTableBody tr');
+            rows.forEach((row, index) => {
+                row.cells[0].textContent = index + 1;
+                row.cells[1].textContent = `OP${(index + 1).toString().padStart(3, '0')}`;
+            });
+        }
+
+        function validateObjekPajakForm() {
+            const requiredFields = ['jenisObjek', 'tglDaftarObjek', 'namaObjek', 'jalanObjek', 'rtRwObjek', 
+                                  'kecamatanObjek', 'kelurahanObjek', 'kabupatenObjek', 'telpObjek', 'kodePosObjek'];
+            
+            for (let fieldId of requiredFields) {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    showAlert('Harap lengkapi semua field objek pajak yang wajib diisi!', 'error');
+                    field.focus();
+                    return false;
+                }
+            }
+            
+            // Validate captcha
+            if (!validateCaptcha('captchaInput', currentCaptcha)) return false;
+            
+            return true;
+        }
+
+        function clearObjekPajakForm() {
+            const formFields = ['jenisObjek', 'tglDaftarObjek', 'namaObjek', 'jalanObjek', 'rtRwObjek',
+                              'kecamatanObjek', 'kelurahanObjek', 'kabupatenObjek', 'telpObjek', 'kodePosObjek',
+                              'instagram', 'facebook', 'tiktok'];
+            
+            formFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) field.value = '';
+            });
+            
+            // Regenerate captcha
+            generateCaptcha();
+        }
+
+        // Tax Registration Submission
+        function submitTaxRegistration() {
+            if (!validateCaptcha('captchaInput', currentCaptcha)) return;
+            
+            const taxData = collectTaxData();
+            saveTaxData(taxData);
+            
+            showAlert('Data pendaftaran wajib pajak berhasil disimpan!', 'success');
+            
+            // Reset form
+            setTimeout(() => {
+                backToUserPortal();
+                resetTaxForm();
+            }, 2000);
+        }
+
+        function collectTaxData() {
+            const objekPajakRows = document.querySelectorAll('#objekPajakTableBody tr');
+            const objekPajak = [];
+            
+            objekPajakRows.forEach(row => {
+                const cells = row.cells;
+                objekPajak.push({
+                    no: cells[0].textContent,
+                    idOP: cells[1].textContent,
+                    namaObjek: cells[2].textContent,
+                    jenisPajak: cells[3].textContent,
+                    jalan: cells[4].textContent,
+                    kecamatan: cells[5].textContent,
+                    kelurahan: cells[6].textContent,
+                    tglDaftar: cells[7].textContent,
+                    transaksi: cells[8].textContent
+                });
+            });
+
+            return {
+                id: Date.now(),
+                tanggalPendataan: document.getElementById('tanggalPendataan').value,
+                bidangUsaha: document.getElementById('bidangUsaha').value,
+                pemilik: {
+                    nama: document.getElementById('namaPemilik').value,
+                    nik: document.getElementById('nikPemilik').value,
+                    npwp: document.getElementById('npwpPemilik').value,
+                    alamat: document.getElementById('alamatPemilik').value,
+                    rtRw: document.getElementById('rtRwPemilik').value,
+                    kelurahan: document.getElementById('kelurahanPemilik').value,
+                    kecamatan: document.getElementById('kecamatanPemilik').value,
+                    kabupaten: document.getElementById('kabupatenPemilik').value,
+                    telp: document.getElementById('telpPemilik').value,
+                    email: document.getElementById('emailPemilik').value,
+                    kodePos: document.getElementById('kodePosPemilik').value
+                },
+                penanggungJawab: {
+                    nama: document.getElementById('namaPenanggungJawab').value,
+                    nik: document.getElementById('nikPenanggungJawab').value,
+                    npwp: document.getElementById('npwpPenanggungJawab').value,
+                    alamat: document.getElementById('alamatPenanggungJawab').value,
+                    rtRw: document.getElementById('rtRwPenanggungJawab').value,
+                    kelurahan: document.getElementById('kelurahanPenanggungJawab').value,
+                    kecamatan: document.getElementById('kecamatanPenanggungJawab').value,
+                    kabupaten: document.getElementById('kabupatenPenanggungJawab').value,
+                    telp: document.getElementById('telpPenanggungJawab').value,
+                    email: document.getElementById('emailPenanggungJawab').value,
+                    kodePos: document.getElementById('kodePosPenanggungJawab').value
+                },
+                objekPajak: objekPajak,
+                objekPajakDetail: {
+                    jenisObjek: document.getElementById('jenisObjek').value,
+                    tglDaftar: document.getElementById('tglDaftarObjek').value,
+                    nama: document.getElementById('namaObjek').value,
+                    jalan: document.getElementById('jalanObjek').value,
+                    rtRw: document.getElementById('rtRwObjek').value,
+                    kecamatan: document.getElementById('kecamatanObjek').value,
+                    kelurahan: document.getElementById('kelurahanObjek').value,
+                    kabupaten: document.getElementById('kabupatenObjek').value,
+                    telp: document.getElementById('telpObjek').value,
+                    kodePos: document.getElementById('kodePosObjek').value,
+                    mediaSosial: {
+                        instagram: document.getElementById('instagram').value,
+                        facebook: document.getElementById('facebook').value,
+                        tiktok: document.getElementById('tiktok').value
+                    }
+                },
+                tanggalDibuat: new Date().toISOString()
+            };
+        }
+
+        function resetTaxForm() {
+            document.querySelectorAll('#taxRegistration input, #taxRegistration select').forEach(field => {
+                if (field.value !== 'WAJIB PAJAK') field.value = '';
+            });
+            document.getElementById('objekPajakTableBody').innerHTML = '';
+            objekPajakCounter = 0;
+            currentPage = 1;
+            generateCaptcha();
+        }
+
+        // Sales Report Functions
+        function generateSalesTable() {
+            const bulan = document.getElementById('bulanPelaporan').value;
+            if (!bulan) {
+                showAlert('Harap pilih bulan pelaporan!', 'error');
+                return;
+            }
+            
+            const tahun = document.getElementById('tahunPelaporan').value || new Date().getFullYear();
+            const daysInMonth = new Date(tahun, parseInt(bulan), 0).getDate();
+            
+            const tableHead = document.getElementById('salesTableHead');
+            const tableBody = document.getElementById('salesTableBody');
+            
+            // Generate header
+            let headerHTML = '<tr><th class="date-header">Tanggal</th>';
+            for (let i = 1; i <= 350; i++) {
+                headerHTML += `<th>P${i}</th>`;
+            }
+            headerHTML += '<th class="total-cell">Total Harian</th></tr>';
+            tableHead.innerHTML = headerHTML;
+            
+            // Generate body
+            let bodyHTML = '';
+            for (let day = 1; day <= daysInMonth; day++) {
+                bodyHTML += `<tr><td class="date-header">${day}</td>`;
+                for (let buyer = 1; buyer <= 350; buyer++) {
+                    bodyHTML += `<td><input type="number" min="0" step="1000" onchange="calculateDailyTotal(${day})" id="day${day}_buyer${buyer}" placeholder="0"></td>`;
+                }
+                bodyHTML += `<td class="total-cell" id="dailyTotal${day}">Rp 0</td></tr>`;
+            }
+            
+            // Add monthly total row
+            bodyHTML += '<tr class="total-cell"><td><strong>Total Bulanan</strong></td>';
+            for (let buyer = 1; buyer <= 350; buyer++) {
+                bodyHTML += `<td id="buyerTotal${buyer}"><strong>Rp 0</strong></td>`;
+            }
+            bodyHTML += '<td id="monthlyTotal"><strong>Rp 0</strong></td></tr>';
+            
+            tableBody.innerHTML = bodyHTML;
+            
+            document.getElementById('salesTableContainer').classList.remove('hidden');
+            showAlert('Tabel laporan berhasil digenerate!', 'success');
+        }
+
+        function calculateDailyTotal(day) {
+            let dailyTotal = 0;
+            for (let buyer = 1; buyer <= 350; buyer++) {
+                const input = document.getElementById(`day${day}_buyer${buyer}`);
+                const value = parseInt(input.value) || 0;
+                dailyTotal += value;
+            }
+            document.getElementById(`dailyTotal${day}`).textContent = formatCurrency(dailyTotal);
+            calculateMonthlyTotals();
+        }
+
+        function calculateMonthlyTotals() {
+            const bulan = document.getElementById('bulanPelaporan').value;
+            const tahun = document.getElementById('tahunPelaporan').value || new Date().getFullYear();
+            const daysInMonth = new Date(tahun, parseInt(bulan), 0).getDate();
+            
+            let monthlyGrandTotal = 0;
+            
+            // Calculate totals for each buyer column
+            for (let buyer = 1; buyer <= 350; buyer++) {
+                let buyerTotal = 0;
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const input = document.getElementById(`day${day}_buyer${buyer}`);
+                    const value = parseInt(input.value) || 0;
+                    buyerTotal += value;
+                }
+                const buyerTotalEl = document.getElementById(`buyerTotal${buyer}`);
+                if (buyerTotalEl) {
+                    buyerTotalEl.innerHTML = `<strong>${formatCurrency(buyerTotal)}</strong>`;
+                }
+                monthlyGrandTotal += buyerTotal;
+            }
+            
+            // Update monthly grand total
+            const monthlyTotalEl = document.getElementById('monthlyTotal');
+            if (monthlyTotalEl) {
+                monthlyTotalEl.innerHTML = `<strong>${formatCurrency(monthlyGrandTotal)}</strong>`;
+            }
+        }
+
+        function saveSalesReport() {
+            if (!validateSalesCaptcha()) return;
+            
+            const salesData = collectSalesData();
+            saveSalesData(salesData);
+            
+            showAlert('Laporan penjualan berhasil disimpan!', 'success');
+        }
+
+        function collectSalesData() {
+            const bulan = document.getElementById('bulanPelaporan').value;
+            const tahun = document.getElementById('tahunPelaporan').value || new Date().getFullYear();
+            const namaRestoran = document.getElementById('namaRestoran').value || 'Tidak Diisi';
+            const namaPetugas = document.getElementById('namaPetugas').value || 'Tidak Diisi';
+            const daysInMonth = new Date(tahun, parseInt(bulan), 0).getDate();
+            
+            const salesData = [];
+            let monthlyTotal = 0;
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayData = { day: day, buyers: [], dailyTotal: 0 };
+                
+                for (let buyer = 1; buyer <= 350; buyer++) {
+                    const input = document.getElementById(`day${day}_buyer${buyer}`);
+                    const value = parseInt(input.value) || 0;
+                    dayData.buyers.push(value);
+                    dayData.dailyTotal += value;
+                }
+                
+                salesData.push(dayData);
+                monthlyTotal += dayData.dailyTotal;
+            }
+            
+            return {
+                id: Date.now(),
+                bulan: getMonthName(bulan),
+                bulanNumber: bulan,
+                tahun: tahun,
+                namaRestoran: namaRestoran,
+                namaPetugas: namaPetugas,
+                salesData: salesData,
+                monthlyTotal: monthlyTotal,
+                tanggalDibuat: new Date().toISOString()
+            };
+        }
+
+        function exportSalesReport() {
+            if (!validateSalesCaptcha()) return;
+            
+            const salesData = collectSalesData();
+            
+            // Create proper XLSX format using SheetJS
+            const workbook = createSalesWorkbook(salesData);
+            downloadXLSXFile(workbook, `Laporan_Penjualan_${salesData.bulan}_${salesData.tahun}.xlsx`);
+            
+            showAlert('Laporan berhasil diexport dalam format XLSX!', 'success');
+        }
+
+        // Admin Functions
+        function loginAdmin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            
+            if (!validateAdminCaptcha()) return;
+            
+            const credentials = getAdminCredentials();
+            if (username === credentials.username && password === credentials.password) {
+                closeAdminLogin();
+                showAdminPortal();
+                showAlert('Login berhasil!', 'success');
+                
+                // Clear login form
+                document.getElementById('adminUsername').value = '';
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('adminCaptchaInput').value = '';
+                generateAdminCaptcha();
+            } else {
+                showAlert('Username atau password salah!', 'error');
+                generateAdminCaptcha();
+            }
+        }
+
+        function showAdminPortal() {
+            hideAllSections();
+            document.getElementById('adminPortal').classList.add('active');
+            showAdminTab('taxData');
+            loadAdminData();
+        }
+
+        function loadAdminData() {
+            loadAdminTaxData();
+            loadAdminSalesData();
+        }
+
+        function loadAdminTaxData() {
+            const taxData = getTaxData();
+            const tbody = document.getElementById('adminTaxData');
+            
+            if (taxData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Belum ada data pendaftaran</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            taxData.forEach((data, index) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${formatDate(data.tanggalPendataan)}</td>
+                    <td>${data.pemilik.nik}</td>
+                    <td>${data.pemilik.nama}</td>
+                    <td>${data.bidangUsaha}</td>
+                    <td>${data.pemilik.alamat}, ${data.pemilik.kelurahan}</td>
+                    <td>${data.pemilik.telp}</td>
+                    <td>
+                        <button class="btn" onclick="viewTaxDetail(${data.id})" style="padding: 5px 10px; font-size: 0.9em; margin-right: 5px;">Detail</button>
+                        <button class="btn" onclick="deleteTaxData(${data.id})" style="padding: 5px 10px; font-size: 0.9em; background: #DC143C;">Hapus</button>
+                    </td>
+                `;
+            });
+        }
+
+        function loadAdminSalesData() {
+            const salesData = getSalesData();
+            const tbody = document.getElementById('adminSalesData');
+            
+            if (salesData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">Belum ada laporan penjualan</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            salesData.forEach((data, index) => {
+                const avgDaily = data.monthlyTotal / data.salesData.length;
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${data.bulan}</td>
+                    <td>${data.tahun}</td>
+                    <td>${data.namaRestoran}</td>
+                    <td>${data.namaPetugas}</td>
+                    <td>${formatCurrency(data.monthlyTotal)}</td>
+                    <td>${formatCurrency(avgDaily)}</td>
+                    <td>${formatDate(data.tanggalDibuat)}</td>
+                    <td>
+                        <button class="btn" onclick="viewSalesDetail(${data.id})" style="padding: 5px 10px; font-size: 0.9em; margin-right: 5px;">Detail</button>
+                        <button class="btn" onclick="deleteSalesData(${data.id})" style="padding: 5px 10px; font-size: 0.9em; background: #DC143C;">Hapus</button>
+                    </td>
+                `;
+            });
+        }
+
+        function logoutAdmin() {
+            if (confirm('Yakin ingin logout?')) {
+                backToMain();
+                showAlert('Logout berhasil!', 'success');
+            }
+        }
+
+        // IMPROVED EXCEL EXPORT FUNCTIONS USING SHEETJS
+        function exportTaxData(format) {
+            const taxData = getTaxData();
+            
+            if (taxData.length === 0) {
+                showAlert('Tidak ada data untuk diexport!', 'error');
+                return;
+            }
+            
+            if (format === 'excel') {
+                const workbook = createTaxWorkbook(taxData);
+                downloadXLSXFile(workbook, `Data_Wajib_Pajak_${getCurrentDate()}.xlsx`);
+            } else if (format === 'word') {
+                const docContent = createTaxWordContent(taxData);
+                downloadWordFile(docContent, `Data_Wajib_Pajak_${getCurrentDate()}.doc`);
+            }
+            
+            showAlert(`Data berhasil diexport dalam format ${format.toUpperCase()}!`, 'success');
+        }
+
+        function exportSalesData(format) {
+            const salesData = getSalesData();
+            
+            if (salesData.length === 0) {
+                showAlert('Tidak ada data untuk diexport!', 'error');
+                return;
+            }
+            
+            const workbook = createSalesDataWorkbook(salesData);
+            downloadXLSXFile(workbook, `Data_Laporan_Penjualan_${getCurrentDate()}.xlsx`);
+            
+            showAlert('Data laporan penjualan berhasil diexport dalam format XLSX!', 'success');
+        }
+
+        // SHEETJS WORKBOOK CREATORS
+        function createTaxWorkbook(data) {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Create main data sheet
+            const wsData = [];
+            wsData.push([
+                'No', 'Tanggal Pendataan', 'NIK', 'Nama Pemilik', 'Bidang Usaha', 'NPWP', 
+                'Alamat', 'RT/RW', 'Kelurahan', 'Kecamatan', 'Kabupaten', 'Kode Pos',
+                'No Telp', 'Email', 'Penanggung Jawab', 'Tanggal Dibuat'
+            ]);
+            
+            data.forEach((item, index) => {
+                wsData.push([
+                    index + 1,
+                    formatDate(item.tanggalPendataan),
+                    `'${item.pemilik.nik}`, // Prefix with ' to preserve leading zeros
+                    item.pemilik.nama,
+                    item.bidangUsaha,
+                    `'${item.pemilik.npwp}`,
+                    item.pemilik.alamat,
+                    item.pemilik.rtRw,
+                    item.pemilik.kelurahan,
+                    item.pemilik.kecamatan,
+                    item.pemilik.kabupaten,
+                    `'${item.pemilik.kodePos}`,
+                    item.pemilik.telp,
+                    item.pemilik.email,
+                    item.penanggungJawab.nama || 'Tidak Ada',
+                    formatDate(item.tanggalDibuat)
+                ]);
+            });
+            
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            
+            // Set column widths
+            ws['!cols'] = [
+                { wch: 5 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 20 },
+                { wch: 40 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 },
+                { wch: 15 }, { wch: 30 }, { wch: 25 }, { wch: 20 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, ws, "Data Wajib Pajak");
+            
+            return wb;
+        }
+
+        function createSalesWorkbook(data) {
+            const wb = XLSX.utils.book_new();
+            
+            // Summary sheet
+            const summaryData = [];
+            summaryData.push(['LAPORAN PENJUALAN HARIAN DAN BULANAN']);
+            summaryData.push([]);
+            summaryData.push(['Bulan:', data.bulan + ' ' + data.tahun]);
+            summaryData.push(['Restoran:', data.namaRestoran]);
+            summaryData.push(['Petugas:', data.namaPetugas]);
+            summaryData.push(['Tanggal Export:', getCurrentDateTime()]);
+            summaryData.push([]);
+            summaryData.push(['RINGKASAN']);
+            summaryData.push(['Total Penjualan Bulanan:', formatCurrencyNumber(data.monthlyTotal)]);
+            summaryData.push(['Rata-rata Harian:', formatCurrencyNumber(Math.round(data.monthlyTotal / data.salesData.length))]);
+            summaryData.push(['Jumlah Hari Operasional:', data.salesData.length]);
+            summaryData.push([]);
+            summaryData.push(['LAPORAN HARIAN']);
+            summaryData.push(['Tanggal', 'Total Harian', 'Jumlah Pembeli', 'Rata-rata per Pembeli']);
+            
+            data.salesData.forEach(dayData => {
+                const buyerCount = dayData.buyers.filter(amount => amount > 0).length;
+                const avgPerBuyer = buyerCount > 0 ? Math.round(dayData.dailyTotal / buyerCount) : 0;
+                summaryData.push([
+                    dayData.day,
+                    formatCurrencyNumber(dayData.dailyTotal),
+                    buyerCount,
+                    formatCurrencyNumber(avgPerBuyer)
+                ]);
+            });
+            
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            wsSummary['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, wsSummary, "Ringkasan");
+            
+            // Detail sheet (first 100 buyers only to avoid Excel size limits)
+            const detailData = [];
+            const headerRow = ['Tanggal'];
+            for (let i = 1; i <= 100; i++) {
+                headerRow.push(`P${i}`);
+            }
+            headerRow.push('Total Harian');
+            detailData.push(headerRow);
+            
+            data.salesData.forEach(dayData => {
+                const row = [dayData.day];
+                for (let i = 0; i < 100; i++) {
+                    row.push(dayData.buyers[i] || 0);
+                }
+                row.push(dayData.dailyTotal);
+                detailData.push(row);
+            });
+            
+            // Add monthly total row
+            const totalRow = ['Total Bulanan'];
+            let monthlyTotalCheck = 0;
+            for (let i = 0; i < 100; i++) {
+                let buyerTotal = 0;
+                data.salesData.forEach(dayData => {
+                    buyerTotal += dayData.buyers[i] || 0;
+                });
+                totalRow.push(buyerTotal);
+                monthlyTotalCheck += buyerTotal;
+            }
+            totalRow.push(monthlyTotalCheck);
+            detailData.push(totalRow);
+            
+            const wsDetail = XLSX.utils.aoa_to_sheet(detailData);
+            XLSX.utils.book_append_sheet(wb, wsDetail, "Detail Penjualan");
+            
+            return wb;
+        }
+
+        function createSalesDataWorkbook(data) {
+            const wb = XLSX.utils.book_new();
+            
+            // Summary sheet
+            const summaryData = [];
+            summaryData.push(['REKAP LAPORAN PENJUALAN']);
+            summaryData.push(['Tanggal Export:', getCurrentDateTime()]);
+            summaryData.push(['Total Laporan:', data.length]);
+            summaryData.push([]);
+            summaryData.push([
+                'No', 'Bulan', 'Tahun', 'Nama Restoran', 'Nama Petugas',
+                'Total Bulanan', 'Rata-rata Harian', 'Jumlah Hari', 'Tanggal Dibuat'
+            ]);
+            
+            data.forEach((item, index) => {
+                const avgDaily = Math.round(item.monthlyTotal / item.salesData.length);
+                summaryData.push([
+                    index + 1,
+                    item.bulan,
+                    item.tahun,
+                    item.namaRestoran,
+                    item.namaPetugas,
+                    formatCurrencyNumber(item.monthlyTotal),
+                    formatCurrencyNumber(avgDaily),
+                    item.salesData.length,
+                    formatDate(item.tanggalDibuat)
+                ]);
+            });
+            
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            wsSummary['!cols'] = [
+                { wch: 5 }, { wch: 12 }, { wch: 8 }, { wch: 20 }, { wch: 20 },
+                { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 20 }
+            ];
+            XLSX.utils.book_append_sheet(wb, wsSummary, "Rekap Laporan");
+            
+            return wb;
+        }
+
+        function downloadXLSXFile(workbook, filename) {
+            try {
+                XLSX.writeFile(workbook, filename);
+            } catch (error) {
+                console.error('Error creating XLSX file:', error);
+                showAlert('Terjadi kesalahan saat membuat file Excel!', 'error');
+            }
+        }
+
+        function createTaxWordContent(data) {
+            let content = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Data Wajib Pajak</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { text-align: center; color: #8B4513; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+        th { background-color: #D2B48C; font-weight: bold; }
+        .header-info { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>REKAP DATA PENDAFTARAN WAJIB PAJAK</h1>
+    <div class="header-info">
+        <p><strong>Tanggal Cetak:</strong> ${getCurrentDateTime()}</p>
+        <p><strong>Total Data:</strong> ${data.length} pendaftaran</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Tanggal Pendataan</th>
+                <th>NIK</th>
+                <th>Nama</th>
+                <th>Bidang Usaha</th>
+                <th>NPWP</th>
+                <th>Alamat</th>
+                <th>No Telp</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody>`;
+            
+            data.forEach((item, index) => {
+                content += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${formatDate(item.tanggalPendataan)}</td>
+                <td>${item.pemilik.nik}</td>
+                <td>${item.pemilik.nama}</td>
+                <td>${item.bidangUsaha}</td>
+                <td>${item.pemilik.npwp}</td>
+                <td>${item.pemilik.alamat}, RT/RW ${item.pemilik.rtRw}, ${item.pemilik.kelurahan}, ${item.pemilik.kecamatan}, ${item.pemilik.kabupaten}</td>
+                <td>${item.pemilik.telp}</td>
+                <td>${item.pemilik.email}</td>
+            </tr>`;
+            });
+            
+            content += `
+        </tbody>
+    </table>
+</body>
+</html>`;
+            
+            return content;
+        }
+
+        function downloadWordFile(content, filename) {
+            const blob = new Blob([content], { 
+                type: 'application/msword;charset=utf-8' 
+            });
+            
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Data Storage Functions
+        function saveTaxData(data) {
+            const existingData = getTaxData();
+            existingData.push(data);
+            localStorage.setItem('taxRegistrationData', JSON.stringify(existingData));
+        }
+
+        function getTaxData() {
+            const data = localStorage.getItem('taxRegistrationData');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveSalesData(data) {
+            const existingData = getSalesData();
+            existingData.push(data);
+            localStorage.setItem('salesReportData', JSON.stringify(existingData));
+        }
+
+        function getSalesData() {
+            const data = localStorage.getItem('salesReportData');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function loadStoredData() {
+            const taxData = getTaxData();
+            const salesData = getSalesData();
+            console.log(`Loaded ${taxData.length} tax registrations and ${salesData.length} sales reports`);
+        }
+
+        // Data Deletion Functions
+        function deleteTaxData(id) {
+            if (confirm('Yakin ingin menghapus data wajib pajak ini?\n\nData yang sudah dihapus tidak dapat dikembalikan!')) {
+                const taxData = getTaxData();
+                const filteredData = taxData.filter(item => item.id !== id);
+                localStorage.setItem('taxRegistrationData', JSON.stringify(filteredData));
+                
+                loadAdminTaxData();
+                showAlert('Data wajib pajak berhasil dihapus!', 'success');
+            }
+        }
+
+        function deleteSalesData(id) {
+            if (confirm('Yakin ingin menghapus laporan penjualan ini?\n\nData yang sudah dihapus tidak dapat dikembalikan!')) {
+                const salesData = getSalesData();
+                const filteredData = salesData.filter(item => item.id !== id);
+                localStorage.setItem('salesReportData', JSON.stringify(filteredData));
+                
+                loadAdminSalesData();
+                showAlert('Laporan penjualan berhasil dihapus!', 'success');
+            }
+        }
+
+        function clearAllSalesData() {
+            if (confirm('PERINGATAN!\n\nYakin ingin menghapus SEMUA laporan penjualan?\n\nTindakan ini tidak dapat dibatalkan dan akan menghapus seluruh data laporan penjualan yang tersimpan!')) {
+                if (confirm('Konfirmasi sekali lagi!\n\nSemua data laporan penjualan akan dihapus permanen. Lanjutkan?')) {
+                    localStorage.removeItem('salesReportData');
+                    loadAdminSalesData();
+                    showAlert('Semua laporan penjualan berhasil dihapus!', 'success');
+                }
+            }
+        }
+
+        // Captcha Functions
+        function generateCaptcha() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let captcha = '';
+            for (let i = 0; i < 5; i++) {
+                captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            currentCaptcha = captcha;
+            document.getElementById('captchaCode').textContent = captcha;
+            document.getElementById('captchaInput').value = '';
+        }
+
+        function generateSalesCaptcha() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let captcha = '';
+            for (let i = 0; i < 5; i++) {
+                captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            salesCaptcha = captcha;
+            document.getElementById('salesCaptchaCode').textContent = captcha;
+            document.getElementById('salesCaptchaInput').value = '';
+        }
+
+        function generateAdminCaptcha() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let captcha = '';
+            for (let i = 0; i < 5; i++) {
+                captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            adminCaptcha = captcha;
+            document.getElementById('adminCaptchaCode').textContent = captcha;
+            document.getElementById('adminCaptchaInput').value = '';
+        }
+
+        function generateSettingsCaptcha() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let captcha = '';
+            for (let i = 0; i < 5; i++) {
+                captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            settingsCaptcha = captcha;
+            document.getElementById('settingsCaptchaCode').textContent = captcha;
+            document.getElementById('settingsCaptchaInput').value = '';
+        }
+
+        function validateCaptcha(inputId, correctCaptcha) {
+            const userInput = document.getElementById(inputId).value.toUpperCase();
+            if (userInput !== correctCaptcha) {
+                showAlert('Kode captcha salah!', 'error');
+                if (inputId === 'captchaInput') generateCaptcha();
+                else if (inputId === 'salesCaptchaInput') generateSalesCaptcha();
+                else if (inputId === 'adminCaptchaInput') generateAdminCaptcha();
+                else if (inputId === 'settingsCaptchaInput') generateSettingsCaptcha();
+                return false;
+            }
+            return true;
+        }
+
+        function validateSalesCaptcha() {
+            return validateCaptcha('salesCaptchaInput', salesCaptcha);
+        }
+
+        function validateAdminCaptcha() {
+            return validateCaptcha('adminCaptchaInput', adminCaptcha);
+        }
+
+        function validateSettingsCaptcha() {
+            return validateCaptcha('settingsCaptchaInput', settingsCaptcha);
+        }
+
+        // Sales Detail Functions
+        function viewTaxDetail(id) {
+            const taxData = getTaxData();
+            const data = taxData.find(item => item.id === id);
+            if (data) {
+                let detailText = `Detail Data Wajib Pajak:\n\n`;
+                detailText += `Nama: ${data.pemilik.nama}\n`;
+                detailText += `NIK: ${data.pemilik.nik}\n`;
+                detailText += `NPWP: ${data.pemilik.npwp}\n`;
+                detailText += `Alamat: ${data.pemilik.alamat}\n`;
+                detailText += `Bidang Usaha: ${data.bidangUsaha}\n`;
+                detailText += `Email: ${data.pemilik.email}\n`;
+                detailText += `Tanggal Daftar: ${formatDate(data.tanggalPendataan)}`;
+                
+                if (data.objekPajak && data.objekPajak.length > 0) {
+                    detailText += `\n\nObjek Pajak:\n`;
+                    data.objekPajak.forEach((obj, index) => {
+                        detailText += `${index + 1}. ${obj.namaObjek} (${obj.jenisPajak})\n`;
+                    });
+                }
+                
+                alert(detailText);
+            }
+        }
+
+        function viewSalesDetail(id) {
+            const salesData = getSalesData();
+            const data = salesData.find(item => item.id === id);
+            if (!data) return;
+            
+            // Show detail section
+            document.getElementById('salesDetailSection').classList.remove('hidden');
+            
+            // Calculate statistics
+            const totalDays = data.salesData.length;
+            const avgDaily = Math.round(data.monthlyTotal / totalDays);
+            const highestDay = getHighestSalesDay(data.salesData);
+            const lowestDay = getLowestSalesDay(data.salesData);
+            const highestAmount = Math.max(...data.salesData.map(d => d.dailyTotal));
+            const lowestAmount = Math.min(...data.salesData.filter(d => d.dailyTotal > 0).map(d => d.dailyTotal)) || 0;
+            
+            // Create detail content
+            let detailHTML = `
+                <div class="vintage-card" style="margin-bottom: 20px;">
+                    <div class="card-header">
+                        <h4>INFORMASI LAPORAN</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div><strong>Bulan:</strong> ${data.bulan} ${data.tahun}</div>
+                            <div><strong>Restoran:</strong> ${data.namaRestoran}</div>
+                        </div>
+                        <div class="form-row">
+                            <div><strong>Petugas:</strong> ${data.namaPetugas}</div>
+                            <div><strong>Tanggal Dibuat:</strong> ${formatDate(data.tanggalDibuat)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vintage-card" style="margin-bottom: 20px;">
+                    <div class="card-header">
+                        <h4>STATISTIK PENJUALAN</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div><strong>Total Bulanan:</strong> ${formatCurrency(data.monthlyTotal)}</div>
+                            <div><strong>Rata-rata Harian:</strong> ${formatCurrency(avgDaily)}</div>
+                        </div>
+                        <div class="form-row">
+                            <div><strong>Jumlah Hari Operasional:</strong> ${totalDays} hari</div>
+                            <div><strong>Penjualan Tertinggi:</strong> ${formatCurrency(highestAmount)} (Tanggal ${highestDay})</div>
+                        </div>
+                        <div class="form-row">
+                            <div><strong>Penjualan Terendah:</strong> ${formatCurrency(lowestAmount)} (Tanggal ${lowestDay})</div>
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="vintage-card">
+                    <div class="card-header">
+                        <h4>LAPORAN HARIAN DETAIL</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal</th>
+                                        <th>Total Harian</th>
+                                        <th>Jumlah Pembeli</th>
+                                        <th>Rata-rata per Pembeli</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+            `;
+            
+            data.salesData.forEach(dayData => {
+                const buyerCount = dayData.buyers.filter(amount => amount > 0).length;
+                const avgPerBuyer = buyerCount > 0 ? Math.round(dayData.dailyTotal / buyerCount) : 0;
+                let status = 'Normal';
+                
+                if (dayData.dailyTotal === highestAmount) status = 'Tertinggi';
+                else if (dayData.dailyTotal === lowestAmount && lowestAmount > 0) status = 'Terendah';
+                else if (dayData.dailyTotal > avgDaily * 1.5) status = 'Tinggi';
+                else if (dayData.dailyTotal < avgDaily * 0.5) status = 'Rendah';
+                
+                detailHTML += `
+                    <tr>
+                        <td>${dayData.day}</td>
+                        <td>${formatCurrency(dayData.dailyTotal)}</td>
+                        <td>${buyerCount}</td>
+                        <td>${formatCurrency(avgPerBuyer)}</td>
+                        <td><span style="color: ${getStatusColor(status)}; font-weight: bold;">${status}</span></td>
+                    </tr>
+                `;
+            });
+            
+            detailHTML += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <button class="btn" onclick="exportSalesDetailReport(${id})">📊 Export Detail Excel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('salesDetailContent').innerHTML = detailHTML;
+            
+            // Scroll to detail section
+            document.getElementById('salesDetailSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideSalesDetail() {
+            document.getElementById('salesDetailSection').classList.add('hidden');
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Tertinggi': return '#228B22';
+                case 'Tinggi': return '#32CD32';
+                case 'Normal': return '#4682B4';
+                case 'Rendah': return '#FF8C00';
+                case 'Terendah': return '#DC143C';
+                default: return '#000000';
+            }
+        }
+
+        function getHighestSalesDay(salesData) {
+            let highest = salesData[0];
+            salesData.forEach(dayData => {
+                if (dayData.dailyTotal > highest.dailyTotal) {
+                    highest = dayData;
+                }
+            });
+            return highest.day;
+        }
+
+        function getLowestSalesDay(salesData) {
+            let lowest = salesData.find(day => day.dailyTotal > 0) || salesData[0];
+            salesData.forEach(dayData => {
+                if (dayData.dailyTotal < lowest.dailyTotal && dayData.dailyTotal > 0) {
+                    lowest = dayData;
+                }
+            });
+            return lowest.day;
+        }
+
+        function exportSalesDetailReport(id) {
+            const salesData = getSalesData();
+            const data = salesData.find(item => item.id === id);
+            if (!data) return;
+            
+            const workbook = createSalesWorkbook(data);
+            downloadXLSXFile(workbook, `Detail_Laporan_${data.bulan}_${data.tahun}_${data.namaRestoran.replace(/\s+/g, '_')}.xlsx`);
+            
+            showAlert('Detail laporan berhasil diexport dalam format XLSX!', 'success');
+        }
+
+        // Utility Functions
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            const container = document.querySelector('.card-body');
+            if (container) {
+                container.insertBefore(alertDiv, container.firstChild);
+                
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function formatCurrencyNumber(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function getMonthName(monthNumber) {
+            const months = [
+                '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+            ];
+            return months[parseInt(monthNumber)];
+        }
+
+        function getCurrentDate() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function getCurrentDateTime() {
+            return new Date().toLocaleString('id-ID', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>
